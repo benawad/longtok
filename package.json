@@ -1,0 +1,26 @@
+{
+  "name": "with-typescript",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "next",
+    "build": "next build",
+    "start": "next start",
+    "type-check": "tsc"
+  },
+  "dependencies": {
+    "file-saver": "^2.0.5",
+    "next": "latest",
+    "react": "^16.12.0",
+    "react-dom": "^16.12.0",
+    "react-dropzone": "^11.2.4"
+  },
+  "devDependencies": {
+    "@types/file-saver": "^2.0.1",
+    "@types/node": "^12.12.21",
+    "@types/react": "^16.9.16",
+    "@types/react-dom": "^16.9.4",
+    "@types/react-dropzone": "^5.1.0",
+    "typescript": "4.0"
+  },
+  "license": "MIT"
+}
