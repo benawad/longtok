@@ -66,16 +66,16 @@ const IndexPage = () => {
     <Layout title="TikTok Long Video Converter">
       <div style={{ display: "flex" }}>
         <div style={{ margin: "auto" }}>
+          <div style={{ marginTop: 20 }}>
+            This only supports webm videos currently, if your video is in
+            another format,{" "}
+            <a href="http://letmegooglethat.com/?q=convert+to+webm">
+              convert it first
+            </a>
+            .
+          </div>
           {!loading ? (
             <div {...getRootProps({ style: { padding: 40 } })}>
-              <div>
-                (only supports webm currently, if your video is in another
-                format,{" "}
-                <a href="https://lmgtfy.app/?q=convert+to+webm">
-                  convert it first
-                </a>
-                )
-              </div>
               <input {...getInputProps()} />
               {isDragActive ? (
                 <p>Drop the files here ...</p>
@@ -86,7 +86,12 @@ const IndexPage = () => {
           ) : (
             <div>loading... (this will take a little bit)</div>
           )}
-          {downloaded && <div>conversion and download complete</div>}
+          {downloaded && (
+            <div>
+              conversion and download complete (make sure to upload the video
+              using TikTok's website NOT the app)
+            </div>
+          )}
           {err && <div>Error: {err}</div>}
         </div>
       </div>
