@@ -14,7 +14,7 @@ const Layout = ({ children, title = "This is the default title" }: Props) => (
       <meta name="viewport" content="initial-scale=1.0, width=device-width" />
       <link rel="shortcut icon" href="/favicon.ico" />
     </Head>
-    <div className="mx-auto w-full max-w-screen-lg">{children}</div>
+    <div className="mx-auto w-full max-w-screen-lg px-4">{children}</div>
     {/* <footer>
       <hr />
       <span>I'm here to stay (Footer)</span>
