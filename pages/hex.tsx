@@ -59,7 +59,7 @@ const IndexPage = () => {
       setErr(err.message);
     }
   }, []);
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const { getRootProps, getInputProps } = useDropzone({
     onDrop,
     accept: ".webm",
   });
