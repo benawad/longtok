@@ -1,7 +1,7 @@
 import Layout from "../components/Layout";
 import "tailwindcss/tailwind.css";
 import { useDropzone } from "react-dropzone";
-import { useCallback, useState } from "react";
+import { useCallback, useReducer } from "react";
 import { saveAs } from "file-saver";
 
 function byteToHexString(uint8arr: Uint8Array) {
@@ -28,13 +28,35 @@ function hexStringToByte(str: string) {
   return new Uint8Array(a);
 }
 
+const flagsReducer = (state, action) => {
+  switch (action.type) {
+    case "CONVERSION_INIT":
+      return {
+        ...state,
+        loading: true,
+        downloaded: false
+      };
+    case "CONVERSION_DONE":
+      return {
+        ...state,
+        loading: false,
+        downloaded: true
+      };
+    case "CONVERSION_ERROR":
+      return {
+        ...state,
+        loading: false,
+        err: action.payload
+      };
+    default:
+      throw new Error();
+  }
+};
+
 const IndexPage = () => {
-  const [loading, setLoading] = useState(false);
-  const [downloaded, setDownloaded] = useState(false);
-  const [err, setErr] = useState("");
+  const [flags, dispatchFlags] = useReducer(flagsReducer, {loading: false, downloaded: false, err: ""});
   const onDrop = useCallback(async ([f]: File[]) => {
-    setLoading(true);
-    setDownloaded(false);
+    dispatchFlags({type: "CONVERSION_INIT"});
     try {
       const arrBuff = await f.arrayBuffer();
       console.log(arrBuff.byteLength);
@@ -51,12 +73,10 @@ const IndexPage = () => {
         "tiktok" + f.name
       );
       console.log("save complete");
-      setLoading(false);
-      setDownloaded(true);
+      dispatchFlags({type: "CONVERSION_DONE"})
     } catch (err) {
       console.log(err);
-      setLoading(false);
-      setErr(err.message);
+      dispatchFlags({type: "CONVERSION_ERROR", payload: err.message});
     }
   }, []);
   const { getRootProps, getInputProps } = useDropzone({
@@ -92,7 +112,7 @@ const IndexPage = () => {
         </li>
         <li>
           2.
-          {!loading ? (
+          {!flags.loading ? (
             <div {...getRootProps()}>
               <input {...getInputProps()} />
               <button className="mb-4 mr-2 py-2 px-4 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none">
@@ -102,8 +122,8 @@ const IndexPage = () => {
           ) : (
             <div>loading... (this will take a little bit)</div>
           )}
-          {downloaded && <div>conversion and download complete</div>}
-          {err && <div>Error: {err}</div>}
+          {flags.downloaded && <div>conversion and download complete</div>}
+          {flags.err && <div>Error: {flags.err}</div>}
         </li>
         <li>3. Upload the new video to TikTok's website (NOT the app)</li>
       </ul>
