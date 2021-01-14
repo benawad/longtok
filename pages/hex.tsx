@@ -107,6 +107,21 @@ const IndexPage = () => {
         </li>
         <li>3. Upload the new video to TikTok's website (NOT the app)</li>
       </ul>
+      <div className="mt-32">
+        <div>
+          <a
+            className="text-blue-800"
+            href="https://github.com/benawad/longtok"
+          >
+            View source code for this website
+          </a>
+        </div>
+        <div>
+          <a className="text-blue-800" href="https://www.tiktok.com/@benawad">
+            Made by Ben Awad
+          </a>
+        </div>
+      </div>
     </Layout>
   );
 };
