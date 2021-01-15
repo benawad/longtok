@@ -28,7 +28,12 @@ function hexStringToByte(str: string) {
   return new Uint8Array(a);
 }
 
-const flagsReducer = (state, action) => {
+const initialState = {loading: false, downloaded: false, err: ""};
+type State  = typeof initialState;
+
+type Action = {type: "CONVERSION_INIT"} | {type: "CONVERSION_DONE"} | {type: "CONVERSION_ERROR", payload: string};
+
+const flagsReducer = (state: State, action: Action) => {
   switch (action.type) {
     case "CONVERSION_INIT":
       return {
@@ -54,7 +59,7 @@ const flagsReducer = (state, action) => {
 };
 
 const IndexPage = () => {
-  const [flags, dispatchFlags] = useReducer(flagsReducer, {loading: false, downloaded: false, err: ""});
+  const [flags, dispatchFlags] = useReducer(flagsReducer, initialState);
   const onDrop = useCallback(async ([f]: File[]) => {
     dispatchFlags({type: "CONVERSION_INIT"});
     try {
