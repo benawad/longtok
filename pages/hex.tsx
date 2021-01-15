@@ -1,8 +1,10 @@
 import Layout from "../components/Layout";
 import "tailwindcss/tailwind.css";
 import { useDropzone } from "react-dropzone";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { saveAs } from "file-saver";
+import { createFFmpeg, fetchFile } from '@ffmpeg/ffmpeg';
+const ffmpeg = createFFmpeg({ log: true });
 
 function byteToHexString(uint8arr: Uint8Array) {
   let hexStr = "";
@@ -31,14 +33,33 @@ function hexStringToByte(str: string) {
 const IndexPage = () => {
   const [loading, setLoading] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
-  const [err, setErr] = useState("");
+  const [ err, setErr ] = useState("");
+  const [ ready, setReady ] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      ffmpeg.isLoaded() ? void 0 : await ffmpeg.load();
+      setReady(true);
+    })();
+  })
+
+  const mp4towebm = async(f: File) => {
+    ffmpeg.FS("writeFile", 'temp.mp4', await fetchFile(f));
+    await ffmpeg.run('-i', 'temp.mp4', '-t', '2.5', '-ss', '2.0', '-f', 'webm', 'output.webm')
+    return ffmpeg.FS("readFile", "output.webm");
+  }
+
   const onDrop = useCallback(async ([f]: File[]) => {
     setLoading(true);
     setDownloaded(false);
     try {
-      const arrBuff = await f.arrayBuffer();
-      console.log(arrBuff.byteLength);
-      let s = byteToHexString(new Uint8Array(arrBuff));
+      let s: string;
+      if (f.type === "video/mp4") s = byteToHexString(await mp4towebm(f));
+      else {
+        const arrBuff = await f.arrayBuffer();
+        console.log(arrBuff.byteLength);
+        s = byteToHexString(new Uint8Array(arrBuff));
+      }
       console.log(s.length);
       const i1 = s.indexOf("2AD7B1");
       console.log({ i1 });
@@ -61,9 +82,9 @@ const IndexPage = () => {
   }, []);
   const { getRootProps, getInputProps } = useDropzone({
     onDrop,
-    accept: ".webm",
+    accept: "video/webm, video/mp4",
   });
-  return (
+  return ready ? (
     <Layout title="TikTok Long Video Converter">
       <h1 className="text-4xl mt-8 mb-6">LongTok</h1>
       <ul>
@@ -123,7 +144,7 @@ const IndexPage = () => {
         </div>
       </div>
     </Layout>
-  );
+  ) : (<h1>Loading</h1>);
 };
 
 export default IndexPage;

@@ -9,6 +9,8 @@
     "type-check": "tsc"
   },
   "dependencies": {
+    "@ffmpeg/core": "^0.8.5",
+    "@ffmpeg/ffmpeg": "^0.9.7",
     "autoprefixer": "^10.2.1",
     "file-saver": "^2.0.5",
     "next": "latest",
