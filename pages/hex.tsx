@@ -45,7 +45,7 @@ const IndexPage = () => {
 
   const mp4towebm = async(f: File) => {
     ffmpeg.FS("writeFile", 'temp.mp4', await fetchFile(f));
-    await ffmpeg.run('-i', 'temp.mp4', '-t', '2.5', '-ss', '2.0', '-f', 'webm', 'output.webm')
+    await ffmpeg.run('-i', 'temp.mp4', 'output.webm')
     return ffmpeg.FS("readFile", "output.webm");
   }
 
