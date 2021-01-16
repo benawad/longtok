@@ -1,41 +1,91 @@
 import Layout from "../components/Layout";
 import "tailwindcss/tailwind.css";
 import { useDropzone } from "react-dropzone";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useReducer } from "react";
 import { saveAs } from "file-saver";
 import { createFFmpeg, fetchFile } from '@ffmpeg/ffmpeg';
 const ffmpeg = createFFmpeg({ log: true });
 
-function byteToHexString(uint8arr: Uint8Array) {
-  let hexStr = "";
-  for (var i = 0; i < uint8arr.length; i++) {
-    let hex = (uint8arr[i] & 0xff).toString(16);
-    hex = hex.length === 1 ? "0" + hex : hex;
-    hexStr += hex;
-  }
-
-  return hexStr.toUpperCase();
+function intToHex(n: number) {
+  const hex = (n & 0xff).toString(16);
+  return hex.length === 1 ? "0" + hex : hex;
 }
 
-function hexStringToByte(str: string) {
-  if (!str) {
-    return new Uint8Array();
-  }
-
-  var a = [];
-  for (var i = 0, len = str.length; i < len; i += 2) {
-    a.push(parseInt(str.substr(i, 2), 16));
-  }
-
-  return new Uint8Array(a);
+function hexToInt(hex: string) {
+  return parseInt(hex, 16);
 }
+
+function changeHexValuesInPlace(uint8arr: Uint8Array) {
+  const s1 = ["2a", "d7", "b1"];
+  let s1Done = false;
+  const s2 = ["44", "89"];
+  const newHex = ["88", "40", "B0", "7D", "B0", "00"];
+
+  const len = uint8arr.length;
+
+  for (let i = 0; i < len; i++) {
+    const hex = intToHex(uint8arr[i]);
+    if (!s1Done) {
+      if (
+        s1[0] === hex &&
+        i + 2 < len &&
+        s1[1] === intToHex(uint8arr[i + 1]) &&
+        s1[2] === intToHex(uint8arr[i + 2])
+      ) {
+        s1Done = true;
+        i += 2;
+      }
+      continue;
+    }
+
+    if (
+      s2[0] === hex &&
+      i + 1 + 6 < len &&
+      s2[1] === intToHex(uint8arr[i + 1])
+    ) {
+      newHex.forEach((h, k) => {
+        const val = hexToInt(h);
+        uint8arr[i + 2 + k] = val;
+      });
+      break;
+    }
+  }
+}
+
+const initialState = { loading: false, downloaded: false, err: "" };
+type State = typeof initialState;
+
+type Action =
+  | { type: "CONVERSION_INIT" }
+  | { type: "CONVERSION_DONE" }
+  | { type: "CONVERSION_ERROR"; payload: string };
+
+const flagsReducer = (state: State, action: Action) => {
+  switch (action.type) {
+    case "CONVERSION_INIT":
+      return {
+        ...state,
+        loading: true,
+        downloaded: false,
+      };
+    case "CONVERSION_DONE":
+      return {
+        ...state,
+        loading: false,
+        downloaded: true,
+      };
+    case "CONVERSION_ERROR":
+      return {
+        ...state,
+        loading: false,
+        err: action.payload,
+      };
+    default:
+      throw new Error();
+  }
+};
 
 const IndexPage = () => {
-  const [loading, setLoading] = useState(false);
-  const [downloaded, setDownloaded] = useState(false);
-  const [ err, setErr ] = useState("");
-  const [ ready, setReady ] = useState(false);
-
   useEffect(() => {
     (async () => {
       ffmpeg.isLoaded() ? void 0 : await ffmpeg.load();
@@ -49,35 +99,31 @@ const IndexPage = () => {
     return ffmpeg.FS("readFile", "output.webm");
   }
 
+  const [flags, dispatchFlags] = useReducer(flagsReducer, initialState);
   const onDrop = useCallback(async ([f]: File[]) => {
-    setLoading(true);
-    setDownloaded(false);
+    dispatchFlags({ type: "CONVERSION_INIT" });
     try {
-      let s: string;
       if (f.type === "video/mp4") s = byteToHexString(await mp4towebm(f));
       else {
         const arrBuff = await f.arrayBuffer();
         console.log(arrBuff.byteLength);
         s = byteToHexString(new Uint8Array(arrBuff));
       }
-      console.log(s.length);
-      const i1 = s.indexOf("2AD7B1");
-      console.log({ i1 });
-      const i2 = s.indexOf("4489", i1);
-      console.log({ i2 });
-      const newS = s.slice(0, i2 + 4) + "8840B07DB000" + s.slice(i2 + 4 + 12);
-      console.log(newS.length);
+      const arrBuff = await f.arrayBuffer();
+      console.log(arrBuff.byteLength);
+      const uint8arr = new Uint8Array(arrBuff);
+      changeHexValuesInPlace(uint8arr);
       saveAs(
-        new Blob([hexStringToByte(newS)], { type: "octet/stream" }),
+        new Blob([uint8arr], {
+          type: "octet/stream",
+        }),
         "tiktok" + f.name
       );
       console.log("save complete");
-      setLoading(false);
-      setDownloaded(true);
+      dispatchFlags({ type: "CONVERSION_DONE" });
     } catch (err) {
       console.log(err);
-      setLoading(false);
-      setErr(err.message);
+      dispatchFlags({ type: "CONVERSION_ERROR", payload: err.message });
     }
   }, []);
   const { getRootProps, getInputProps } = useDropzone({
@@ -113,7 +159,7 @@ const IndexPage = () => {
         </li>
         <li>
           2.
-          {!loading ? (
+          {!flags.loading ? (
             <div {...getRootProps()}>
               <input {...getInputProps()} />
               <button className="mb-4 mr-2 py-2 px-4 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none">
@@ -123,8 +169,8 @@ const IndexPage = () => {
           ) : (
             <div>loading... (this will take a little bit)</div>
           )}
-          {downloaded && <div>conversion and download complete</div>}
-          {err && <div>Error: {err}</div>}
+          {flags.downloaded && <div>conversion and download complete</div>}
+          {flags.err && <div>Error: {flags.err}</div>}
         </li>
         <li>3. Upload the new video to TikTok's website (NOT the app)</li>
       </ul>
