@@ -3,6 +3,8 @@ import "tailwindcss/tailwind.css";
 import { useDropzone } from "react-dropzone";
 import { useCallback, useReducer } from "react";
 import { saveAs } from "file-saver";
+import { createFFmpeg, fetchFile } from '@ffmpeg/ffmpeg';
+const ffmpeg = createFFmpeg({ log: true });
 
 function intToHex(n: number) {
   const hex = (n & 0xff).toString(16);
@@ -84,10 +86,29 @@ const flagsReducer = (state: State, action: Action) => {
 };
 
 const IndexPage = () => {
+  useEffect(() => {
+    (async () => {
+      ffmpeg.isLoaded() ? void 0 : await ffmpeg.load();
+      setReady(true);
+    })();
+  })
+
+  const mp4towebm = async(f: File) => {
+    ffmpeg.FS("writeFile", 'temp.mp4', await fetchFile(f));
+    await ffmpeg.run('-i', 'temp.mp4', 'output.webm')
+    return ffmpeg.FS("readFile", "output.webm");
+  }
+
   const [flags, dispatchFlags] = useReducer(flagsReducer, initialState);
   const onDrop = useCallback(async ([f]: File[]) => {
     dispatchFlags({ type: "CONVERSION_INIT" });
     try {
+      if (f.type === "video/mp4") s = byteToHexString(await mp4towebm(f));
+      else {
+        const arrBuff = await f.arrayBuffer();
+        console.log(arrBuff.byteLength);
+        s = byteToHexString(new Uint8Array(arrBuff));
+      }
       const arrBuff = await f.arrayBuffer();
       console.log(arrBuff.byteLength);
       const uint8arr = new Uint8Array(arrBuff);
@@ -107,9 +128,9 @@ const IndexPage = () => {
   }, []);
   const { getRootProps, getInputProps } = useDropzone({
     onDrop,
-    accept: ".webm",
+    accept: "video/webm, video/mp4",
   });
-  return (
+  return ready ? (
     <Layout title="TikTok Long Video Converter">
       <h1 className="text-4xl mt-8 mb-6">LongTok</h1>
       <ul>
@@ -169,7 +190,7 @@ const IndexPage = () => {
         </div>
       </div>
     </Layout>
-  );
+  ) : (<h1>Loading</h1>);
 };
 
 export default IndexPage;
