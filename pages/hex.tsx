@@ -4,34 +4,59 @@ import { useDropzone } from "react-dropzone";
 import { useCallback, useReducer } from "react";
 import { saveAs } from "file-saver";
 
-function byteToHexString(uint8arr: Uint8Array) {
-  let hexStr = "";
-  for (var i = 0; i < uint8arr.length; i++) {
-    let hex = (uint8arr[i] & 0xff).toString(16);
-    hex = hex.length === 1 ? "0" + hex : hex;
-    hexStr += hex;
-  }
-
-  return hexStr.toUpperCase();
+function intToHex(n: number) {
+  const hex = (n & 0xff).toString(16);
+  return hex.length === 1 ? "0" + hex : hex;
 }
 
-function hexStringToByte(str: string) {
-  if (!str) {
-    return new Uint8Array();
-  }
-
-  var a = [];
-  for (var i = 0, len = str.length; i < len; i += 2) {
-    a.push(parseInt(str.substr(i, 2), 16));
-  }
-
-  return new Uint8Array(a);
+function hexToInt(hex: string) {
+  return parseInt(hex, 16);
 }
 
-const initialState = {loading: false, downloaded: false, err: ""};
-type State  = typeof initialState;
+function changeHexValuesInPlace(uint8arr: Uint8Array) {
+  const s1 = ["2a", "d7", "b1"];
+  let s1Done = false;
+  const s2 = ["44", "89"];
+  const newHex = ["88", "40", "B0", "7D", "B0", "00"];
 
-type Action = {type: "CONVERSION_INIT"} | {type: "CONVERSION_DONE"} | {type: "CONVERSION_ERROR", payload: string};
+  const len = uint8arr.length;
+
+  for (let i = 0; i < len; i++) {
+    const hex = intToHex(uint8arr[i]);
+    if (!s1Done) {
+      if (
+        s1[0] === hex &&
+        i + 2 < len &&
+        s1[1] === intToHex(uint8arr[i + 1]) &&
+        s1[2] === intToHex(uint8arr[i + 2])
+      ) {
+        s1Done = true;
+        i += 2;
+      }
+      continue;
+    }
+
+    if (
+      s2[0] === hex &&
+      i + 1 + 6 < len &&
+      s2[1] === intToHex(uint8arr[i + 1])
+    ) {
+      newHex.forEach((h, k) => {
+        const val = hexToInt(h);
+        uint8arr[i + 2 + k] = val;
+      });
+      break;
+    }
+  }
+}
+
+const initialState = { loading: false, downloaded: false, err: "" };
+type State = typeof initialState;
+
+type Action =
+  | { type: "CONVERSION_INIT" }
+  | { type: "CONVERSION_DONE" }
+  | { type: "CONVERSION_ERROR"; payload: string };
 
 const flagsReducer = (state: State, action: Action) => {
   switch (action.type) {
@@ -39,19 +64,19 @@ const flagsReducer = (state: State, action: Action) => {
       return {
         ...state,
         loading: true,
-        downloaded: false
+        downloaded: false,
       };
     case "CONVERSION_DONE":
       return {
         ...state,
         loading: false,
-        downloaded: true
+        downloaded: true,
       };
     case "CONVERSION_ERROR":
       return {
         ...state,
         loading: false,
-        err: action.payload
+        err: action.payload,
       };
     default:
       throw new Error();
@@ -61,27 +86,23 @@ const flagsReducer = (state: State, action: Action) => {
 const IndexPage = () => {
   const [flags, dispatchFlags] = useReducer(flagsReducer, initialState);
   const onDrop = useCallback(async ([f]: File[]) => {
-    dispatchFlags({type: "CONVERSION_INIT"});
+    dispatchFlags({ type: "CONVERSION_INIT" });
     try {
       const arrBuff = await f.arrayBuffer();
       console.log(arrBuff.byteLength);
-      let s = byteToHexString(new Uint8Array(arrBuff));
-      console.log(s.length);
-      const i1 = s.indexOf("2AD7B1");
-      console.log({ i1 });
-      const i2 = s.indexOf("4489", i1);
-      console.log({ i2 });
-      const newS = s.slice(0, i2 + 4) + "8840B07DB000" + s.slice(i2 + 4 + 12);
-      console.log(newS.length);
+      const uint8arr = new Uint8Array(arrBuff);
+      changeHexValuesInPlace(uint8arr);
       saveAs(
-        new Blob([hexStringToByte(newS)], { type: "octet/stream" }),
+        new Blob([uint8arr], {
+          type: "octet/stream",
+        }),
         "tiktok" + f.name
       );
       console.log("save complete");
-      dispatchFlags({type: "CONVERSION_DONE"})
+      dispatchFlags({ type: "CONVERSION_DONE" });
     } catch (err) {
       console.log(err);
-      dispatchFlags({type: "CONVERSION_ERROR", payload: err.message});
+      dispatchFlags({ type: "CONVERSION_ERROR", payload: err.message });
     }
   }, []);
   const { getRootProps, getInputProps } = useDropzone({
