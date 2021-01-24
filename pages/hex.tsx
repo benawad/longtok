@@ -13,40 +13,56 @@ function hexToInt(hex: string) {
   return parseInt(hex, 16);
 }
 
-function changeHexValuesInPlace(uint8arr: Uint8Array) {
-  const s1 = ["2a", "d7", "b1"];
-  let s1Done = false;
-  const s2 = ["44", "89"];
-  const newHex = ["88", "40", "B0", "7D", "B0", "00"];
+function changeHexValuesInPlace(uint8arr: Uint8Array, fileType: string) {
+  if (fileType == "video/webm") {
+    const s1 = ["2a", "d7", "b1"];
+    let s1Done = false;
+    const s2 = ["44", "89"];
+    const newHex = ["88", "40", "B0", "7D", "B0", "00"];
 
-  const len = uint8arr.length;
+    const len = uint8arr.length;
 
-  for (let i = 0; i < len; i++) {
-    const hex = intToHex(uint8arr[i]);
-    if (!s1Done) {
-      if (
-        s1[0] === hex &&
-        i + 2 < len &&
-        s1[1] === intToHex(uint8arr[i + 1]) &&
-        s1[2] === intToHex(uint8arr[i + 2])
-      ) {
-        s1Done = true;
-        i += 2;
+    for (let i = 0; i < len; i++) {
+      const hex = intToHex(uint8arr[i]);
+      if (!s1Done) {
+        if (
+          s1[0] === hex &&
+          i + 2 < len &&
+          s1[1] === intToHex(uint8arr[i + 1]) &&
+          s1[2] === intToHex(uint8arr[i + 2])
+        ) {
+          s1Done = true;
+          i += 2;
+        }
+        continue;
       }
-      continue;
-    }
 
-    if (
-      s2[0] === hex &&
-      i + 1 + 6 < len &&
-      s2[1] === intToHex(uint8arr[i + 1])
-    ) {
-      newHex.forEach((h, k) => {
-        const val = hexToInt(h);
-        uint8arr[i + 2 + k] = val;
-      });
-      break;
+      if (
+        s2[0] === hex &&
+        i + 1 + 6 < len &&
+        s2[1] === intToHex(uint8arr[i + 1])
+      ) {
+        newHex.forEach((h, k) => {
+          const val = hexToInt(h);
+          uint8arr[i + 2 + k] = val;
+        });
+        break;
+      }
     }
+  } else if (fileType == "video/mp4") {
+    var index = uint8arr.findIndex((item, index, arr) => {
+      return item == 0x6D && arr[index + 1] == 0x76 && arr[index + 2] == 0x68 && arr[index + 3] == 0x64
+    });
+    if (index < 0) throw Error("Invalid mp4 file")
+    var offset = 16
+    var newTimescale = [0, 0, 3, 232]
+    var newUnit = [0, 0, 19, 136]
+    var data = newTimescale.concat(newUnit)
+    for (var i = 0; i < data.length; i++) {
+      uint8arr[index + offset + i] = data[i];
+    }
+  } else {
+    throw Error("Unsupported file type: " + fileType)
   }
 }
 
@@ -91,7 +107,7 @@ const IndexPage = () => {
       const arrBuff = await f.arrayBuffer();
       console.log(arrBuff.byteLength);
       const uint8arr = new Uint8Array(arrBuff);
-      changeHexValuesInPlace(uint8arr);
+      changeHexValuesInPlace(uint8arr, f.type);
       saveAs(
         new Blob([uint8arr], {
           type: "octet/stream",
@@ -107,7 +123,7 @@ const IndexPage = () => {
   }, []);
   const { getRootProps, getInputProps } = useDropzone({
     onDrop,
-    accept: ".webm",
+    accept: ".webm, .mp4",
   });
   return (
     <Layout title="TikTok Long Video Converter">
@@ -123,35 +139,21 @@ const IndexPage = () => {
           </a>
         </li>
         <li>
-          1. &nbsp;
-          <a
-            className="text-blue-800"
-            href="http://letmegooglethat.com/?q=convert+to+webm"
-          >
-            Convert your video to webm format
-          </a>{" "}
-          (if you know how to use ffmpeg, you can do:{" "}
-          <code className="bg-gray-200 p-1">
-            ffmpeg -i myvideo.mov output.webm
-          </code>
-          )
-        </li>
-        <li>
-          2.
+          1.
           {!flags.loading ? (
             <div {...getRootProps()}>
               <input {...getInputProps()} />
               <button className="mb-4 mr-2 py-2 px-4 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none">
-                upload webm video
+                upload webm / mp4 video
               </button>
             </div>
           ) : (
-            <div>loading... (this will take a little bit)</div>
-          )}
+              <div>loading... (this will take a little bit)</div>
+            )}
           {flags.downloaded && <div>conversion and download complete</div>}
           {flags.err && <div>Error: {flags.err}</div>}
         </li>
-        <li>3. Upload the new video to TikTok's website (NOT the app)</li>
+        <li>2. Upload the new video to TikTok's website (NOT the app)</li>
       </ul>
       <div className="mt-32">
         <div>
