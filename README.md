@@ -1,3 +1,3 @@
 # longtok
 
-tiktok.benawad.com/hex
+https://tiktok.benawad.com/hex
